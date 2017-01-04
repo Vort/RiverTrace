@@ -1,0 +1,6 @@
+*.suo
+*.vsp
+/bin/Debug/
+/bin/Release/
+/obj
+/packages
