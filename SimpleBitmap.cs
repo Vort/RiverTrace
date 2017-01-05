@@ -1,4 +1,6 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace RiverTrace
@@ -45,6 +47,19 @@ namespace RiverTrace
             Height = height;
         }
 
+        public void WriteTo(string fileName)
+        {
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(GetBitmap()));
+            encoder.Save(File.Create(fileName));
+        }
+
+        public BitmapSource GetBitmap()
+        {
+            return BitmapSource.Create(Width, Height,
+                96, 96, PixelFormats.Bgr32, null, Data, Width * 4);
+        }
+
         public Color GetPixel(int x, int y)
         {
             int offset = (Width * y + x) * 4;
@@ -65,6 +80,11 @@ namespace RiverTrace
             Data[offset] = r;
             Data[offset + 1] = g;
             Data[offset + 2] = b;
+        }
+
+        public void CopyTo(SimpleBitmap dest, int destY)
+        {
+            Array.Copy(Data, 0, dest.Data, destY * Width * 4, Width * Height * 4);
         }
     }
 }

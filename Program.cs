@@ -4,13 +4,17 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Media.Imaging;
 
 namespace RiverTrace
 {
     class Program
     {
+        private const bool debug = false;
         private Cie1976Comparison cie;
         private int sampleWidth;
         private int sampleLength;
@@ -19,14 +23,13 @@ namespace RiverTrace
 
         Program()
         {
-            int zoom = 15;
+            string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            Directory.SetCurrentDirectory(exeDir);
 
-            var result = GetTrace(
-                64.9035622, 52.2209184,
-                64.9033165, 52.2211652,
-                zoom);
-
-            WriteOsm(result, zoom);
+            Trace(
+                64.9035637, 52.2209239,
+                64.9032122, 52.2213061,
+                15);
         }
 
         void WriteOsm(List<Vector> result, int zoom)
@@ -69,44 +72,36 @@ namespace RiverTrace
             return rgb1.Compare(rgb2, cie);
         }
 
-        void CalcSampleDimensions(Vector p, Vector direction)
+        void CalcSampleDimensions(Vector startPoint, Vector direction)
         {
             double shoreContrast = 10.0;
 
             int pickCount = 5;
-            Vector pickPoint1 = p;
-            double riverHalfWidth1 = 0.0;
-            double riverHalfWidth2 = 0.0;
-            Vector dir1 = direction.Rotated(-90);
-            Vector dir2 = direction.Rotated(90);
+            Vector pickPoint1 = startPoint;
+            double[] riverHalfWidth = new double[2];
+            Vector[] sideDirs = new Vector[] { direction.Rotated(-90), direction.Rotated(90) };
             for (int i = 0; i < pickCount; i++)
             {
-                Vector pickPoint2 = pickPoint1;
                 Color refColor = tileMap.GetPixel(pickPoint1.X, pickPoint1.Y);
                 for (int j = 0; j < 2; j++)
                 {
+                    Vector pickPoint2 = pickPoint1;
                     for (int k = 0; k < 50; k++)
                     {
-                        if (j == 0)
-                            riverHalfWidth1++;
-                        else
-                            riverHalfWidth2++;
-                        if (j == 0)
-                            pickPoint2 += dir1;
-                        else
-                            pickPoint2 += dir2;
-                        double diff = GetColorDifference(refColor,
-                            tileMap.GetPixel(pickPoint2.X, pickPoint2.Y));
+                        pickPoint2 += sideDirs[j];
+                        Color checkColor = tileMap.GetPixel(pickPoint2.X, pickPoint2.Y);
+                        double diff = GetColorDifference(refColor, checkColor);
                         if (diff > shoreContrast)
                             break;
+                        riverHalfWidth[j] += 1.0;
                     }
                 }
                 pickPoint1 += direction;
             }
-            riverHalfWidth1 /= pickCount;
-            riverHalfWidth2 /= pickCount;
-            double riverWidth = riverHalfWidth1 + riverHalfWidth2;
-            sampleWidth = (int)(riverWidth * 1.5);
+            riverHalfWidth[0] /= pickCount;
+            riverHalfWidth[1] /= pickCount;
+            double riverWidth = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
+            sampleWidth = (int)Math.Ceiling(riverWidth * 1.7);
             sampleLength = sampleWidth / 2;
         }
 
@@ -192,7 +187,7 @@ namespace RiverTrace
             return sample;
         }
 
-        List<Vector> GetTrace(double lat1, double lon1, double lat2, double lon2, int zoom)
+        void Trace(double lat1, double lon1, double lat2, double lon2, int zoom)
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
@@ -200,14 +195,14 @@ namespace RiverTrace
             cie = new Cie1976Comparison();
             tileMap = new TileMap(zoom);
 
-            var result = new List<Vector>();
+            var way = new List<Vector>();
 
             Vector p1 = new Vector();
             Vector p2 = new Vector();
             Projection.DegToPix(lat1, lon1, zoom, out p1.X, out p1.Y);
             Projection.DegToPix(lat2, lon2, zoom, out p2.X, out p2.Y);
 
-            result.Add(p1);
+            way.Add(p1);
             Vector lastDirection = p2 - p1;
             lastDirection.Normalize();
 
@@ -215,14 +210,16 @@ namespace RiverTrace
 
             maxDifference = 28.0;
 
+            List<SimpleBitmap> samples = new List<SimpleBitmap>();
             SimpleBitmap firstSample = GetSample(p1, lastDirection);
             SimpleBitmap avgSample = firstSample;
             Vector lastPoint = p1 + lastDirection * sampleLength;
-            result.Add(lastPoint);
+            way.Add(lastPoint);
+            samples.Add(firstSample);
 
             double totalDiff = 0.0;
 
-            for (int i = 0; i < 550; i++)
+            for (int i = 0; i < 1200; i++)
             {
                 SimpleBitmap bestSample;
                 double bestDiff;
@@ -238,21 +235,33 @@ namespace RiverTrace
 
                 totalDiff += bestDiff;
 
+                samples.Add(bestSample);
                 avgSample = GetAvgSample(firstSample, bestSample);
 
                 lastDirection = bestVector;
                 lastPoint = lastPoint + lastDirection * sampleLength;
-                result.Add(lastPoint);
+                way.Add(lastPoint);
             }
             sw.Stop();
 
-            /*
-            Console.WriteLine("Total diff = " + totalDiff);
-            Console.WriteLine("Elapsed = " + sw.Elapsed.TotalSeconds);
-            */
+            way.Reverse();
+            WriteOsm(way, zoom);
 
-            result.Reverse();
-            return result;
+            if (debug)
+            {
+                SimpleBitmap sampleChain = new SimpleBitmap(
+                    sampleWidth, sampleLength * samples.Count);
+                for (int i = 0; i < samples.Count; i++)
+                    samples[i].CopyTo(sampleChain, i * sampleLength);
+                sampleChain.WriteTo("sample_chain.png");
+
+                for (int i = 0; i < 50; i++)
+                    Console.WriteLine();
+                Console.WriteLine("<!--");
+                Console.WriteLine("Total diff = " + totalDiff);
+                Console.WriteLine("Elapsed = " + sw.Elapsed.TotalSeconds);
+                Console.WriteLine("-->");
+            }
         }
 
         static void Main(string[] args)

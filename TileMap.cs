@@ -18,7 +18,7 @@ namespace RiverTrace
 
         private static string GetTileFileName(int tileIndexX, int tileIndexY, int zoom)
         {
-            return tileIndexX + "_" + tileIndexY + "_" + zoom + ".jpeg";
+            return Path.Combine("cache", tileIndexX + "_" + tileIndexY + "_" + zoom + ".jpeg");
         }
 
         public Color GetPixel(double x, double y)
@@ -30,10 +30,10 @@ namespace RiverTrace
             int flxi = (int)flx;
             int flyi = (int)fly;
 
-            Color c11 = GetPixel(flxi, flyi);
-            Color c12 = GetPixel(flxi, flyi + 1);
-            Color c21 = GetPixel(flxi + 1, flyi);
-            Color c22 = GetPixel(flxi + 1, flyi + 1);
+            Color c11 = GetPixel(flxi - 1, flyi - 1);
+            Color c12 = GetPixel(flxi - 1, flyi);
+            Color c21 = GetPixel(flxi, flyi - 1);
+            Color c22 = GetPixel(flxi, flyi);
 
             return ColorLerp.Lerp(
                 ColorLerp.Lerp(c11, c21, frx),
@@ -65,6 +65,7 @@ namespace RiverTrace
                     else
                     {
                         data = Bing.GetTile(tileIndexX, tileIndexY, Zoom);
+                        Directory.CreateDirectory("cache");
                         File.WriteAllBytes(fileName, data);
                     }
 
