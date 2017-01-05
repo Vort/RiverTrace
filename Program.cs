@@ -14,7 +14,7 @@ namespace RiverTrace
 {
     class Program
     {
-        private const bool debug = false;
+        private const bool debug = true;
         private Cie1976Comparison cie;
         private int sampleWidth;
         private int sampleLength;
@@ -26,10 +26,18 @@ namespace RiverTrace
             string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             Directory.SetCurrentDirectory(exeDir);
 
-            Trace(
+            /*Trace(
                 64.9035637, 52.2209239,
                 64.9032122, 52.2213061,
-                15);
+                15);*/
+            /*Trace(
+                62.85685, 83.55849,
+                62.85723, 83.55906,
+                15);*/
+            Trace(
+                65.5238753, 79.3499377,
+                65.5239887, 79.3501845,
+                16);
         }
 
         void WriteOsm(List<Vector> result, int zoom)
@@ -101,19 +109,19 @@ namespace RiverTrace
             riverHalfWidth[0] /= pickCount;
             riverHalfWidth[1] /= pickCount;
             double riverWidth = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
-            sampleWidth = (int)Math.Ceiling(riverWidth * 1.7);
-            sampleLength = sampleWidth / 2;
+            sampleWidth = Math.Max((int)Math.Ceiling(riverWidth * 1.7), 5);
+            sampleLength = Math.Max((int)Math.Ceiling(riverWidth * 2.0), 3);
         }
 
         SimpleBitmap GetSample(Vector origin, Vector direction)
         {
             SimpleBitmap sample = new SimpleBitmap(sampleWidth, sampleLength);
 
-            Vector dv = new Vector(direction.Y, -direction.X);
+            Vector dv = direction.Rotated(-90);
             for (int i = 0; i < sampleWidth; i++)
                 for (int j = 0; j < sampleLength; j++)
                 {
-                    int xs = i - sampleWidth / 2;
+                    int xs = sampleWidth / 2 - i;
                     int ys = j;
                     double x = xs * dv.X - ys * dv.Y + origin.X;
                     double y = xs * dv.Y + ys * dv.X + origin.Y;
@@ -218,8 +226,9 @@ namespace RiverTrace
             samples.Add(firstSample);
 
             double totalDiff = 0.0;
+            int iterationCount = 1710;
 
-            for (int i = 0; i < 1200; i++)
+            for (int i = 0; i < iterationCount; i++)
             {
                 SimpleBitmap bestSample;
                 double bestDiff;
