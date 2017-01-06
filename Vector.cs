@@ -40,12 +40,17 @@ namespace RiverTrace
 
         public Vector Rotated(double degrees)
         {
-            double rad = degrees * (Math.PI / 180);
+            double rad = DegToRad(degrees);
             double c = Math.Cos(rad);
             double s = Math.Sin(rad);
             return new Vector(
                 X * c - Y * s,
                 X * s + Y * c);
+        }
+
+        public static double DegToRad(double degrees)
+        {
+            return Math.PI * degrees / 180.0;
         }
 
         public double X;

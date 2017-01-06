@@ -15,6 +15,33 @@ namespace RiverTrace
             originShift = 2 * Math.PI * 6378137 / 2.0;
         }
 
+        public static double Distance(Vector p1, Vector p2, int zoom)
+        {
+            double lat1;
+            double lon1;
+            double lat2;
+            double lon2;
+            Projection.PixToDeg(p1.X, p1.Y, zoom, out lat1, out lon1);
+            Projection.PixToDeg(p2.X, p2.Y, zoom, out lat2, out lon2);
+            return Distance(lat1, lon1, lat2, lon2);
+        }
+
+        public static double Distance(double lat1, double lon1, double lat2, double lon2)
+        {
+            double r = 6371000.0;
+            double lat1rad = Vector.DegToRad(lat1);
+            double lat2rad = Vector.DegToRad(lat2);
+            double deltaLatRad = Vector.DegToRad(lat2 - lat1);
+            double deltaLonRad = Vector.DegToRad(lon2 - lon1);
+
+            double a = Math.Sin(deltaLatRad / 2) * Math.Sin(deltaLatRad / 2) +
+                Math.Cos(lat1rad) * Math.Cos(lat2rad) *
+                Math.Sin(deltaLonRad / 2) * Math.Sin(deltaLonRad / 2);
+            double c = 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
+
+            return r * c;
+        }
+
         public static void DegToPix(double lat, double lon,
             int zoom, out double x, out double y)
         {

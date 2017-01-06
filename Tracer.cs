@@ -12,6 +12,7 @@ namespace RiverTrace
         private Cie1976Comparison cie;
         private int sampleWidth;
         private int sampleLength;
+        private double riverWidthM;
         private TileMap tileMap;
 
         void WriteOsm(List<Vector> result)
@@ -40,6 +41,7 @@ namespace RiverTrace
             }
             Console.WriteLine("    <tag k='source:tracer' v='RiverTrace' />");
             Console.WriteLine("    <tag k='source:zoomlevel' v='" + Config.Data.zoom + "' />");
+            Console.WriteLine("    <tag k='width' v='" + riverWidthM.ToString("0.0") + "' />");
             Console.WriteLine("    <tag k='waterway' v='river' />");
             Console.WriteLine("  </way>");
             Console.WriteLine("</osm>");
@@ -78,9 +80,13 @@ namespace RiverTrace
             }
             riverHalfWidth[0] /= pickCount;
             riverHalfWidth[1] /= pickCount;
-            double riverWidth = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
-            sampleWidth = Math.Max((int)Math.Ceiling(riverWidth * Config.Data.sampleWidthScale), 5);
-            sampleLength = Math.Max((int)Math.Ceiling(riverWidth * Config.Data.sampleLengthScale), 3);
+            double riverWidthPx = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
+            sampleWidth = Math.Max((int)Math.Ceiling(riverWidthPx * Config.Data.sampleWidthScale), 5);
+            sampleLength = Math.Max((int)Math.Ceiling(riverWidthPx * Config.Data.sampleLengthScale), 3);
+
+            Vector wp1 = startPoint + sideDirs[0] * (riverWidthPx / 2.0);
+            Vector wp2 = startPoint + sideDirs[1] * (riverWidthPx / 2.0);
+            riverWidthM = Projection.Distance(wp1, wp2, Config.Data.zoom);
         }
 
         SimpleBitmap GetSample(Vector origin, Vector direction)
