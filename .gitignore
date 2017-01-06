@@ -1,5 +1,6 @@
 *.suo
 *.vsp
+*.user
 /bin/Debug/
 /bin/Release/
 /obj

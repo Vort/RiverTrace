@@ -12,6 +12,23 @@ namespace RiverTrace
         {
             try
             {
+                if (args.Length == 2)
+                {
+                    if (args[0].Contains(",") && args[1].Contains(","))
+                    {
+                        if (!double.TryParse(args[0].Split(',')[0], out Config.Data.lon1))
+                            return false;
+                        if (!double.TryParse(args[0].Split(',')[1], out Config.Data.lat1))
+                            return false;
+                        if (!double.TryParse(args[1].Split(',')[0], out Config.Data.lon2))
+                            return false;
+                        if (!double.TryParse(args[1].Split(',')[1], out Config.Data.lat2))
+                            return false;
+                        go = true;
+                        return true;
+                    }
+                }
+
                 for (int i = 0; i < args.Length; )
                 {
                     string cmd = args[i++];
