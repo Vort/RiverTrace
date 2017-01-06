@@ -8,17 +8,14 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Windows.Media.Imaging;
 
 namespace RiverTrace
 {
     class Program
     {
-        private const bool debug = true;
         private Cie1976Comparison cie;
         private int sampleWidth;
         private int sampleLength;
-        private double maxDifference;
         private TileMap tileMap;
 
         Program()
@@ -26,18 +23,9 @@ namespace RiverTrace
             string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             Directory.SetCurrentDirectory(exeDir);
 
-            /*Trace(
-                64.9035637, 52.2209239,
-                64.9032122, 52.2213061,
-                15);*/
-            /*Trace(
-                62.85685, 83.55849,
-                62.85723, 83.55906,
-                15);*/
-            Trace(
-                65.5238753, 79.3499377,
-                65.5239887, 79.3501845,
-                16);
+            Config.Write();
+
+            Trace();
         }
 
         void WriteOsm(List<Vector> result, int zoom)
@@ -82,8 +70,6 @@ namespace RiverTrace
 
         void CalcSampleDimensions(Vector startPoint, Vector direction)
         {
-            double shoreContrast = 10.0;
-
             int pickCount = 5;
             Vector pickPoint1 = startPoint;
             double[] riverHalfWidth = new double[2];
@@ -99,7 +85,7 @@ namespace RiverTrace
                         pickPoint2 += sideDirs[j];
                         Color checkColor = tileMap.GetPixel(pickPoint2.X, pickPoint2.Y);
                         double diff = GetColorDifference(refColor, checkColor);
-                        if (diff > shoreContrast)
+                        if (diff > Config.Data.shoreContrast)
                             break;
                         riverHalfWidth[j] += 1.0;
                     }
@@ -109,8 +95,8 @@ namespace RiverTrace
             riverHalfWidth[0] /= pickCount;
             riverHalfWidth[1] /= pickCount;
             double riverWidth = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
-            sampleWidth = Math.Max((int)Math.Ceiling(riverWidth * 1.7), 5);
-            sampleLength = Math.Max((int)Math.Ceiling(riverWidth * 2.0), 3);
+            sampleWidth = Math.Max((int)Math.Ceiling(riverWidth * Config.Data.sampleWidthScale), 5);
+            sampleLength = Math.Max((int)Math.Ceiling(riverWidth * Config.Data.sampleLengthScale), 3);
         }
 
         SimpleBitmap GetSample(Vector origin, Vector direction)
@@ -195,28 +181,26 @@ namespace RiverTrace
             return sample;
         }
 
-        void Trace(double lat1, double lon1, double lat2, double lon2, int zoom)
+        void Trace()
         {
             Stopwatch sw = new Stopwatch();
             sw.Start();
 
             cie = new Cie1976Comparison();
-            tileMap = new TileMap(zoom);
+            tileMap = new TileMap(Config.Data.zoom);
 
             var way = new List<Vector>();
 
             Vector p1 = new Vector();
             Vector p2 = new Vector();
-            Projection.DegToPix(lat1, lon1, zoom, out p1.X, out p1.Y);
-            Projection.DegToPix(lat2, lon2, zoom, out p2.X, out p2.Y);
+            Projection.DegToPix(Config.Data.lat1, Config.Data.lon1, Config.Data.zoom, out p1.X, out p1.Y);
+            Projection.DegToPix(Config.Data.lat2, Config.Data.lon2, Config.Data.zoom, out p2.X, out p2.Y);
 
             way.Add(p1);
             Vector lastDirection = p2 - p1;
             lastDirection.Normalize();
 
             CalcSampleDimensions(p1, lastDirection);
-
-            maxDifference = 28.0;
 
             List<SimpleBitmap> samples = new List<SimpleBitmap>();
             SimpleBitmap firstSample = GetSample(p1, lastDirection);
@@ -226,9 +210,7 @@ namespace RiverTrace
             samples.Add(firstSample);
 
             double totalDiff = 0.0;
-            int iterationCount = 1710;
-
-            for (int i = 0; i < iterationCount; i++)
+            for (int i = 0; i < Config.Data.iterationCount; i++)
             {
                 SimpleBitmap bestSample;
                 double bestDiff;
@@ -239,7 +221,7 @@ namespace RiverTrace
                 GetBestAngle(lastPoint, lastDirection, avgSample, bestAngle - 4.0, bestAngle + 4.0, 1.0,
                     out bestSample, out bestDiff, out bestVector, out bestAngle);
 
-                if (bestDiff > maxDifference)
+                if (bestDiff > Config.Data.maxDifference)
                     break;
 
                 totalDiff += bestDiff;
@@ -254,9 +236,9 @@ namespace RiverTrace
             sw.Stop();
 
             way.Reverse();
-            WriteOsm(way, zoom);
+            WriteOsm(way, Config.Data.zoom);
 
-            if (debug)
+            if (Config.Data.debug)
             {
                 SimpleBitmap sampleChain = new SimpleBitmap(
                     sampleWidth, sampleLength * samples.Count);
