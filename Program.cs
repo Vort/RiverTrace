@@ -56,6 +56,7 @@ namespace RiverTrace
         static void Main(string[] args)
         {
             Thread.CurrentThread.CurrentCulture = CultureInfo.InvariantCulture;
+            Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
             string exeDir = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
             Directory.SetCurrentDirectory(exeDir);
 
@@ -79,7 +80,16 @@ namespace RiverTrace
                 {
                     Config.Write();
                     if (go)
-                        new Tracer();
+                    {
+                        try
+                        {
+                            new Tracer();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.Error.WriteLine(e);
+                        }
+                    }
                     else
                         Console.WriteLine("<osm version='0.6'></osm>");
                 }

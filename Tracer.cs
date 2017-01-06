@@ -41,7 +41,7 @@ namespace RiverTrace
             }
             Console.WriteLine("    <tag k='source:tracer' v='RiverTrace' />");
             Console.WriteLine("    <tag k='source:zoomlevel' v='" + Config.Data.zoom + "' />");
-            Console.WriteLine("    <tag k='width' v='" + riverWidthM.ToString("0.0") + "' />");
+            Console.WriteLine("    <tag k='width' v='" + Math.Round(riverWidthM).ToString() + "' />");
             Console.WriteLine("    <tag k='waterway' v='river' />");
             Console.WriteLine("  </way>");
             Console.WriteLine("</osm>");
