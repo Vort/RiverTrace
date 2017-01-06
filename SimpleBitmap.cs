@@ -69,17 +69,17 @@ namespace RiverTrace
         public void SetPixel(int x, int y, Color c)
         {
             int offset = (Width * y + x) * 4;
-            Data[offset] = c.R;
+            Data[offset + 2] = c.R;
             Data[offset + 1] = c.G;
-            Data[offset + 2] = c.B;
+            Data[offset] = c.B;
         }
 
         public void SetPixel(int x, int y, byte r, byte g, byte b)
         {
             int offset = (Width * y + x) * 4;
-            Data[offset] = r;
+            Data[offset + 2] = r;
             Data[offset + 1] = g;
-            Data[offset + 2] = b;
+            Data[offset] = b;
         }
 
         public void CopyTo(SimpleBitmap dest, int destY)
