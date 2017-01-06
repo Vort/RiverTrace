@@ -49,11 +49,11 @@ namespace RiverTrace
                 lon1 = 52.2209239,
                 lat2 = 64.9032122,
                 lon2 = 52.2213061,
-                iterationCount = 1000,
+                iterationCount = 800,
                 sampleWidthScale = 1.7,
-                sampleLengthScale = 0.7,
+                sampleLengthScale = 0.6,
                 shoreContrast = 10.0,
-                maxDifference = 28.0,
+                maxDifference = 12.0,
                 debug = false
             };
             if (File.Exists(fileName))
