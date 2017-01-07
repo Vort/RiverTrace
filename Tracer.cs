@@ -1,6 +1,4 @@
-﻿using ColorMine.ColorSpaces;
-using ColorMine.ColorSpaces.Comparisons;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -9,7 +7,6 @@ namespace RiverTrace
 {
     class Tracer
     {
-        private Cie1976Comparison cie;
         private int sampleWidth;
         private int sampleLength;
         private double riverWidthM;
@@ -47,13 +44,6 @@ namespace RiverTrace
             Console.WriteLine("</osm>");
         }
 
-        double GetColorDifference(Color c1, Color c2)
-        {
-            Rgb rgb1 = new Rgb { R = c1.R, G = c1.G, B = c1.B };
-            Rgb rgb2 = new Rgb { R = c2.R, G = c2.G, B = c2.B };
-            return rgb1.Compare(rgb2, cie);
-        }
-
         void CalcSampleDimensions(Vector startPoint, Vector direction)
         {
             int pickCount = 5;
@@ -70,7 +60,7 @@ namespace RiverTrace
                     {
                         pickPoint2 += sideDirs[j];
                         Color checkColor = tileMap.GetPixel(pickPoint2.X, pickPoint2.Y);
-                        double diff = GetColorDifference(refColor, checkColor);
+                        double diff = refColor.DifferenceTo(checkColor);
                         if (diff > Config.Data.shoreContrast)
                             break;
                         riverHalfWidth[j] += 1.0;
@@ -115,7 +105,7 @@ namespace RiverTrace
                 {
                     Color c1 = s1.GetPixel(i, j);
                     Color c2 = s2.GetPixel(i, j);
-                    double pixelDelta = GetColorDifference(c1, c2);
+                    double pixelDelta = c1.DifferenceTo(c2);
                     totalDelta += pixelDelta;
                 }
             return totalDelta / (sampleWidth * sampleLength);
@@ -176,7 +166,6 @@ namespace RiverTrace
             Stopwatch sw = new Stopwatch();
             sw.Start();
 
-            cie = new Cie1976Comparison();
             tileMap = new TileMap(Config.Data.zoom);
 
             var way = new List<Vector>();
