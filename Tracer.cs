@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -7,9 +8,9 @@ namespace RiverTrace
 {
     class Tracer
     {
-        private int sampleWidth;
-        private int sampleLength;
         private double riverWidthM;
+        private double scanRadius;
+        private Color waterColor;
         private TileMap tileMap;
 
         void WriteOsm(List<Vector> result)
@@ -53,6 +54,14 @@ namespace RiverTrace
             for (int i = 0; i < pickCount; i++)
             {
                 Color refColor = tileMap.GetPixel(pickPoint1.X, pickPoint1.Y);
+
+                if (i == 0)
+                    waterColor = refColor;
+                else
+                    waterColor = new Color((byte)((waterColor.R + refColor.R) / 2),
+                        (byte)((waterColor.G + refColor.G) / 2),
+                        (byte)((waterColor.B + refColor.B) / 2));
+
                 for (int j = 0; j < 2; j++)
                 {
                     Vector pickPoint2 = pickPoint1;
@@ -71,94 +80,11 @@ namespace RiverTrace
             riverHalfWidth[0] /= pickCount;
             riverHalfWidth[1] /= pickCount;
             double riverWidthPx = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
-            sampleWidth = Math.Max((int)Math.Ceiling(riverWidthPx * Config.Data.sampleWidthScale), 5);
-            sampleLength = Math.Max((int)Math.Ceiling(riverWidthPx * Config.Data.sampleLengthScale), 3);
+            scanRadius = riverWidthPx * Config.Data.scanRadiusScale;
 
             Vector wp1 = startPoint + sideDirs[0] * (riverWidthPx / 2.0);
             Vector wp2 = startPoint + sideDirs[1] * (riverWidthPx / 2.0);
             riverWidthM = Projection.Distance(wp1, wp2, Config.Data.zoom);
-        }
-
-        SimpleBitmap GetSample(Vector origin, Vector direction)
-        {
-            SimpleBitmap sample = new SimpleBitmap(sampleWidth, sampleLength);
-
-            Vector dv = direction.Rotated(-90);
-            for (int i = 0; i < sampleWidth; i++)
-                for (int j = 0; j < sampleLength; j++)
-                {
-                    int xs = sampleWidth / 2 - i;
-                    int ys = j;
-                    double x = xs * dv.X - ys * dv.Y + origin.X;
-                    double y = xs * dv.Y + ys * dv.X + origin.Y;
-                    sample.SetPixel(i, j, tileMap.GetPixel(x, y));
-                }
-
-            return sample;
-        }
-
-        double GetSampleDifference(SimpleBitmap s1, SimpleBitmap s2)
-        {
-            double totalDelta = 0.0;
-            for (int i = 0; i < sampleWidth; i++)
-                for (int j = 0; j < sampleLength; j++)
-                {
-                    Color c1 = s1.GetPixel(i, j);
-                    Color c2 = s2.GetPixel(i, j);
-                    double pixelDelta = c1.DifferenceTo(c2);
-                    totalDelta += pixelDelta;
-                }
-            return totalDelta / (sampleWidth * sampleLength);
-        }
-
-        void GetBestAngle(Vector lastPoint, Vector lastVector, SimpleBitmap avgSample,
-            double minAngle, double maxAngle, double step, out SimpleBitmap bestSample,
-            out double bestDiff, out Vector bestVector, out double bestAngle)
-        {
-            SimpleBitmap localBestSample = null;
-            double localBestDiff = double.MaxValue;
-            Vector localBestVector = null;
-            double localBestAngle = 0.0;
-            var lockObj = new object();
-
-            int stepCount = (int)Math.Round((maxAngle - minAngle) / step) + 1;
-            Parallel.For(0, stepCount, i =>
-            {
-                double angle = minAngle + i * step;
-                Vector rv = lastVector.Rotated(angle);
-                SimpleBitmap candidateSample = GetSample(lastPoint, rv);
-                double diff = GetSampleDifference(avgSample, candidateSample);
-                lock (lockObj)
-                {
-                    localBestDiff = Math.Min(localBestDiff, diff);
-                    if (diff == localBestDiff)
-                    {
-                        localBestSample = candidateSample;
-                        localBestVector = rv;
-                        localBestAngle = angle;
-                    }
-                }
-            });
-            bestVector = localBestVector;
-            bestSample = localBestSample;
-            bestDiff = localBestDiff;
-            bestAngle = localBestAngle;
-        }
-
-        SimpleBitmap GetAvgSample(SimpleBitmap s1, SimpleBitmap s2)
-        {
-            SimpleBitmap sample = new SimpleBitmap(sampleWidth, sampleLength);
-            for (int i = 0; i < sampleWidth; i++)
-                for (int j = 0; j < sampleLength; j++)
-                {
-                    Color c1 = s1.GetPixel(i, j);
-                    Color c2 = s2.GetPixel(i, j);
-                    sample.SetPixel(i, j,
-                        (byte)((c1.R + c2.R) / 2),
-                        (byte)((c1.G + c2.G) / 2),
-                        (byte)((c1.B + c2.B) / 2));
-                }
-            return sample;
         }
 
         public Tracer()
@@ -181,35 +107,76 @@ namespace RiverTrace
 
             CalcSampleDimensions(p1, lastDirection);
 
+            int pixelRange = (int)(scanRadius * 2) + 1;
+
             List<SimpleBitmap> samples = new List<SimpleBitmap>();
-            SimpleBitmap firstSample = GetSample(p1, lastDirection);
-            SimpleBitmap avgSample = firstSample;
-            Vector lastPoint = p1 + lastDirection * sampleLength;
-            way.Add(lastPoint);
-            samples.Add(firstSample);
 
-            double totalDiff = 0.0;
-            for (int i = 0; i < Config.Data.iterationCount; i++)
+            Vector lastPoint = p1;
+            for (int z = 0; z < Config.Data.iterationCount; z++)
             {
-                SimpleBitmap bestSample;
-                double bestDiff;
-                Vector bestVector;
-                double bestAngle;
-                GetBestAngle(lastPoint, lastDirection, avgSample, -50.0, 50.0, 5.0,
-                    out bestSample, out bestDiff, out bestVector, out bestAngle);
-                GetBestAngle(lastPoint, lastDirection, avgSample, bestAngle - 4.0, bestAngle + 4.0, 1.0,
-                    out bestSample, out bestDiff, out bestVector, out bestAngle);
+                SimpleBitmap sb = null;
+                if (Config.Data.debug)
+                    sb = new SimpleBitmap(pixelRange * 2, pixelRange);
+                var angles = new Dictionary<double, double>();
+                for (int i = 0; i < pixelRange; i++)
+                {
+                    for (int j = 0; j < pixelRange; j++)
+                    {
+                        int x = (int)(lastPoint.X + i - scanRadius);
+                        int y = (int)(lastPoint.Y + j - scanRadius);
+                        Vector pixelVector = new Vector(x, y) - lastPoint;
+                        double pixelVectorLen = pixelVector.Length();
 
-                if (bestDiff > Config.Data.maxDifference)
+                        if (pixelVector.Length() < 1.0)
+                            continue;
+                        if (pixelVectorLen > scanRadius)
+                            continue;
+
+                        double angle = lastDirection.AngleTo(pixelVector);
+                        if (angle < -Config.Data.angleRange)
+                            continue;
+                        if (angle > Config.Data.angleRange)
+                            continue;
+
+                        Color c = tileMap.GetPixel(x, y);
+                        if (Config.Data.debug)
+                            sb.SetPixel(i, j, c);
+
+                        double invDiff = Math.Max(1.0 -
+                            waterColor.DifferenceTo(c) / Config.Data.shoreContrast, 0.0);
+
+                        if (Config.Data.debug)
+                        {
+                            byte diffColor = (byte)Math.Round(invDiff * 255.0);
+                            sb.SetPixel(i + pixelRange, j, new Color(diffColor, diffColor, diffColor));
+                        }
+
+                        if (invDiff != 0.0)
+                        {
+                            if (!angles.ContainsKey(angle))
+                                angles[angle] = 0.0;
+                            angles[angle] += invDiff;
+                        }
+                    }
+                }
+
+                samples.Add(sb);
+
+                if (angles.Count == 0)
                     break;
 
-                totalDiff += bestDiff;
+                double[] anglesGrid = new double[(int)Math.Round(
+                    Config.Data.angleRange * 2 / Config.Data.angleStep + 1)];
+                foreach (var kv in angles)
+                {
+                    anglesGrid[(int)Math.Round((kv.Key +
+                        Config.Data.angleRange) / Config.Data.angleStep)] += kv.Value;
+                }
 
-                samples.Add(bestSample);
-                avgSample = GetAvgSample(firstSample, bestSample);
-
-                lastDirection = bestVector;
-                lastPoint = lastPoint + lastDirection * sampleLength;
+                double bestAngle = (anglesGrid.ToList().IndexOf(anglesGrid.Max()) *
+                    Config.Data.angleStep - Config.Data.angleRange);
+                lastDirection = lastDirection.Rotated(bestAngle);
+                lastPoint += lastDirection * scanRadius * Config.Data.advanceRate;
                 way.Add(lastPoint);
             }
             sw.Stop();
@@ -220,15 +187,13 @@ namespace RiverTrace
             if (Config.Data.debug)
             {
                 SimpleBitmap sampleChain = new SimpleBitmap(
-                    sampleWidth, sampleLength * samples.Count);
+                    samples[0].Width, samples[0].Height * samples.Count);
                 for (int i = 0; i < samples.Count; i++)
-                    samples[i].CopyTo(sampleChain, i * sampleLength);
+                    samples[i].CopyTo(sampleChain, i * samples[0].Height);
                 sampleChain.WriteTo("sample_chain.png");
-
                 for (int i = 0; i < 50; i++)
                     Console.WriteLine();
                 Console.WriteLine("<!--");
-                Console.WriteLine("Total diff = " + totalDiff);
                 Console.WriteLine("Elapsed = " + sw.Elapsed.TotalSeconds);
                 Console.WriteLine("-->");
             }

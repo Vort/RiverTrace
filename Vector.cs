@@ -33,9 +33,14 @@ namespace RiverTrace
 
         public void Normalize()
         {
-            double l = Math.Sqrt(X * X + Y * Y);
+            double l = Length();
             X /= l;
             Y /= l;
+        }
+
+        public double Length()
+        {
+            return Math.Sqrt(X * X + Y * Y);
         }
 
         public Vector Rotated(double degrees)
@@ -48,9 +53,24 @@ namespace RiverTrace
                 X * s + Y * c);
         }
 
+        public double AngleTo(Vector p2)
+        {
+            double angle = RadToDeg(Math.Atan2(p2.Y, p2.X) - Math.Atan2(Y, X));
+            if (angle < -180.0)
+                angle += 360.0;
+            else if (angle > 180.0)
+                angle -= 360.0;
+            return angle;
+        }
+
         public static double DegToRad(double degrees)
         {
-            return Math.PI * degrees / 180.0;
+            return degrees * Math.PI / 180.0;
+        }
+
+        public static double RadToDeg(double radians)
+        {
+            return radians * 180.0 / Math.PI;
         }
 
         public double X;

@@ -22,13 +22,15 @@ namespace RiverTrace
         [DataMember]
         public int iterationCount;
         [DataMember]
-        public double sampleWidthScale;
+        public double scanRadiusScale;
         [DataMember]
-        public double sampleLengthScale;
+        public double angleRange;
+        [DataMember]
+        public double angleStep;
         [DataMember]
         public double shoreContrast;
         [DataMember]
-        public double maxDifference;
+        public double advanceRate;
 
         [DataMember]
         public bool debug;
@@ -49,11 +51,12 @@ namespace RiverTrace
                 lon1 = 52.2209239,
                 lat2 = 64.9032122,
                 lon2 = 52.2213061,
-                iterationCount = 500,
-                sampleWidthScale = 1.7,
-                sampleLengthScale = 0.6,
+                iterationCount = 300,
+                scanRadiusScale = 2.0,
+                angleRange = 90.0,
+                angleStep = 4.0,
                 shoreContrast = 10.0,
-                maxDifference = 14.0,
+                advanceRate = 0.5,
                 debug = false
             };
             if (File.Exists(fileName))
