@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
@@ -81,14 +82,19 @@ namespace RiverTrace
                     Config.Write();
                     if (go)
                     {
-                        try
+                        if (!Debugger.IsAttached)
                         {
+                            try
+                            {
+                                new Tracer();
+                            }
+                            catch (Exception e)
+                            {
+                                Console.Error.WriteLine(e);
+                            }
+                        }
+                        else
                             new Tracer();
-                        }
-                        catch (Exception e)
-                        {
-                            Console.Error.WriteLine(e);
-                        }
                     }
                     else
                         Console.WriteLine("<osm version='0.6'></osm>");

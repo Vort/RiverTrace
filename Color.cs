@@ -26,6 +26,15 @@ namespace RiverTrace
             return rgb1.Compare(rgb2, cie);
         }
 
+        public static Color Lerp(Color c1, Color c2, double x)
+        {
+            double omx = 1 - x;
+            return new Color(
+                (byte)(c1.R * omx + c2.R * x),
+                (byte)(c1.G * omx + c2.G * x),
+                (byte)(c1.B * omx + c2.B * x));
+        }
+
         public byte R;
         public byte G;
         public byte B;

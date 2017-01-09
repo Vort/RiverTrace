@@ -35,9 +35,9 @@ namespace RiverTrace
             Color c21 = GetPixel(flxi, flyi - 1);
             Color c22 = GetPixel(flxi, flyi);
 
-            return ColorLerp.Lerp(
-                ColorLerp.Lerp(c11, c21, frx),
-                ColorLerp.Lerp(c12, c22, frx), fry);
+            return Color.Lerp(
+                Color.Lerp(c11, c21, frx),
+                Color.Lerp(c12, c22, frx), fry);
         }
 
         public Color GetPixel(int x, int y)

@@ -118,9 +118,9 @@ namespace RiverTrace
                 if (Config.Data.debug)
                     sb = new SimpleBitmap(pixelRange * 2, pixelRange);
                 var angles = new Dictionary<double, double>();
-                for (int i = 0; i < pixelRange; i++)
+                Parallel.For(0, pixelRange, j =>
                 {
-                    for (int j = 0; j < pixelRange; j++)
+                    for (int i = 0; i < pixelRange; i++)
                     {
                         int x = (int)(lastPoint.X + i - scanRadius);
                         int y = (int)(lastPoint.Y + j - scanRadius);
@@ -140,7 +140,7 @@ namespace RiverTrace
 
                         Color c = tileMap.GetPixel(x, y);
                         if (Config.Data.debug)
-                            sb.SetPixel(i, j, c);
+                            sb.SetPixel(i, pixelRange - j - 1, c);
 
                         double invDiff = Math.Max(1.0 -
                             waterColor.DifferenceTo(c) / Config.Data.shoreContrast, 0.0);
@@ -148,17 +148,21 @@ namespace RiverTrace
                         if (Config.Data.debug)
                         {
                             byte diffColor = (byte)Math.Round(invDiff * 255.0);
-                            sb.SetPixel(i + pixelRange, j, new Color(diffColor, diffColor, diffColor));
+                            sb.SetPixel(i + pixelRange, pixelRange - j - 1, new Color(diffColor, diffColor, diffColor));
                         }
 
                         if (invDiff != 0.0)
                         {
-                            if (!angles.ContainsKey(angle))
-                                angles[angle] = 0.0;
-                            angles[angle] += invDiff;
+                            lock (angles)
+                            {
+                                if (!angles.ContainsKey(angle))
+                                    angles[angle] = invDiff;
+                                else
+                                    angles[angle] += invDiff;
+                            }
                         }
                     }
-                }
+                });
 
                 samples.Add(sb);
 
@@ -184,6 +188,12 @@ namespace RiverTrace
             way.Reverse();
             WriteOsm(way);
 
+            for (int i = 0; i < 25; i++)
+                Console.WriteLine();
+            Console.WriteLine("<!--");
+            Console.WriteLine("Elapsed = " + sw.Elapsed.TotalSeconds + " sec");
+            Console.WriteLine("-->");
+
             if (Config.Data.debug)
             {
                 SimpleBitmap sampleChain = new SimpleBitmap(
@@ -191,11 +201,6 @@ namespace RiverTrace
                 for (int i = 0; i < samples.Count; i++)
                     samples[i].CopyTo(sampleChain, i * samples[0].Height);
                 sampleChain.WriteTo("sample_chain.png");
-                for (int i = 0; i < 50; i++)
-                    Console.WriteLine();
-                Console.WriteLine("<!--");
-                Console.WriteLine("Elapsed = " + sw.Elapsed.TotalSeconds);
-                Console.WriteLine("-->");
             }
         }
     }

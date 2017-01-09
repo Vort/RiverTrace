@@ -5,23 +5,6 @@ using System.Windows.Media.Imaging;
 
 namespace RiverTrace
 {
-    class ColorLerp
-    {
-        public static Color Lerp(Color c1, Color c2, double minV, double maxV, double V)
-        {
-            return Lerp(c1, c2, (V - minV) / (maxV - minV));
-        }
-
-        public static Color Lerp(Color c1, Color c2, double x)
-        {
-            double omx = 1 - x;
-            return new Color(
-                (byte)(c1.R * omx + c2.R * x),
-                (byte)(c1.G * omx + c2.G * x),
-                (byte)(c1.B * omx + c2.B * x));
-        }
-    }
-
     class SimpleBitmap
     {
         public byte[] Data;
