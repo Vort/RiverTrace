@@ -8,6 +8,7 @@ namespace RiverTrace
 {
     class Tracer
     {
+        private double riverWidthPx;
         private double riverWidthM;
         private double scanRadius;
         private Color waterColor;
@@ -79,7 +80,7 @@ namespace RiverTrace
             }
             riverHalfWidth[0] /= pickCount;
             riverHalfWidth[1] /= pickCount;
-            double riverWidthPx = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
+            riverWidthPx = riverHalfWidth[0] + riverHalfWidth[1] + 1.0;
             scanRadius = riverWidthPx * Config.Data.scanRadiusScale;
 
             Vector wp1 = startPoint + sideDirs[0] * (riverWidthPx / 2.0);
@@ -127,9 +128,9 @@ namespace RiverTrace
                         Vector pixelVector = new Vector(x, y) - lastPoint;
                         double pixelVectorLen = pixelVector.Length();
 
-                        if (pixelVector.Length() < 1.0)
-                            continue;
                         if (pixelVectorLen > scanRadius)
+                            continue;
+                        if (pixelVectorLen < 1.0)
                             continue;
 
                         double angle = lastDirection.AngleTo(pixelVector);
@@ -186,6 +187,11 @@ namespace RiverTrace
             sw.Stop();
 
             way.Reverse();
+            if (Config.Data.simplificationStrength > 0.0)
+            {
+                way = Simplify.DouglasPeuckerReduction(way,
+                    riverWidthPx * Config.Data.simplificationStrength);
+            }
             WriteOsm(way);
 
             for (int i = 0; i < 25; i++)
