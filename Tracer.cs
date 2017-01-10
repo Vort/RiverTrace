@@ -95,20 +95,20 @@ namespace RiverTrace
 
             tileMap = new TileMap(Config.Data.zoom);
 
-            var way = new List<Vector>();
-
             Vector p1 = new Vector();
             Vector p2 = new Vector();
             Projection.DegToPix(Config.Data.lat1, Config.Data.lon1, Config.Data.zoom, out p1.X, out p1.Y);
             Projection.DegToPix(Config.Data.lat2, Config.Data.lon2, Config.Data.zoom, out p2.X, out p2.Y);
 
-            way.Add(p1);
             Vector lastDirection = p2 - p1;
             lastDirection.Normalize();
 
             CalcSampleDimensions(p1, lastDirection);
 
             int pixelRange = (int)(scanRadius * 2) + 1;
+
+            var way = new List<Vector>();
+            way.Add(p1);
 
             List<SimpleBitmap> samples = new List<SimpleBitmap>();
 
@@ -182,16 +182,20 @@ namespace RiverTrace
                     Config.Data.angleStep - Config.Data.angleRange);
                 lastDirection = lastDirection.Rotated(bestAngle);
                 lastPoint += lastDirection * scanRadius * Config.Data.advanceRate;
+
+                if (!Intersection.Check(way, lastPoint))
+                    break;
+
                 way.Add(lastPoint);
             }
-            sw.Stop();
-
-            way.Reverse();
             if (Config.Data.simplificationStrength > 0.0)
             {
                 way = Simplify.DouglasPeuckerReduction(way,
                     riverWidthPx * Config.Data.simplificationStrength);
             }
+            way.Reverse();
+            sw.Stop();
+
             WriteOsm(way);
 
             for (int i = 0; i < 25; i++)

@@ -57,6 +57,7 @@
     <Compile Include="Bing.cs" />
     <Compile Include="Color.cs" />
     <Compile Include="Config.cs" />
+    <Compile Include="Intersection.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Projection.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
