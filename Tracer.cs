@@ -3,6 +3,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using ColorMine.ColorSpaces;
 
 namespace RiverTrace
 {
@@ -11,7 +12,7 @@ namespace RiverTrace
         private double riverWidthPx;
         private double riverWidthM;
         private double scanRadius;
-        private Color waterColor;
+        private Lab waterColor;
         private TileMap tileMap;
 
         void WriteOsm(List<Vector> result)
@@ -49,28 +50,52 @@ namespace RiverTrace
         void CalcSampleDimensions(Vector startPoint, Vector direction)
         {
             int pickCount = 5;
-            Vector pickPoint1 = startPoint;
-            double[] riverHalfWidth = new double[2];
+            int maxHalfWidth = 50;
+
             Vector[] sideDirs = new Vector[] { direction.Rotated(-90), direction.Rotated(90) };
+
+            Vector p1 = startPoint + sideDirs[0] * maxHalfWidth;
+            Vector p2 = startPoint + sideDirs[1] * maxHalfWidth;
+            Vector p3 = startPoint + direction * pickCount + sideDirs[0] * maxHalfWidth;
+            Vector p4 = startPoint + direction * pickCount + sideDirs[1] * maxHalfWidth;
+
+            int minX = (int)Math.Min(Math.Min(Math.Min(p1.X, p2.X), p3.X), p4.X);
+            int minY = (int)Math.Min(Math.Min(Math.Min(p1.Y, p2.Y), p3.Y), p4.Y);
+            int maxX = (int)Math.Max(Math.Max(Math.Max(p1.X, p2.X), p3.X), p4.X);
+            int maxY = (int)Math.Max(Math.Max(Math.Max(p1.Y, p2.Y), p3.Y), p4.Y);
+
+            tileMap.Load(minX - 4, minY - 4, maxX - minX + 8, maxY - minY + 8);
+
+            int waterColorR = 0;
+            int waterColorG = 0;
+            int waterColorB = 0;
+
+            Vector pickPoint1 = startPoint;
             for (int i = 0; i < pickCount; i++)
             {
-                Color refColor = tileMap.GetPixel(pickPoint1.X, pickPoint1.Y);
+                Color c = tileMap.GetPixel(pickPoint1.X, pickPoint1.Y);
+                waterColorR += c.R;
+                waterColorG += c.G;
+                waterColorB += c.B;
+                pickPoint1 += direction;
+            }
+            waterColor = new Color(
+                (byte)(waterColorR / pickCount),
+                (byte)(waterColorG / pickCount),
+                (byte)(waterColorB / pickCount)).ToLab();
 
-                if (i == 0)
-                    waterColor = refColor;
-                else
-                    waterColor = new Color((byte)((waterColor.R + refColor.R) / 2),
-                        (byte)((waterColor.G + refColor.G) / 2),
-                        (byte)((waterColor.B + refColor.B) / 2));
-
+            pickPoint1 = startPoint;
+            double[] riverHalfWidth = new double[2];
+            for (int i = 0; i < pickCount; i++)
+            {
                 for (int j = 0; j < 2; j++)
                 {
                     Vector pickPoint2 = pickPoint1;
-                    for (int k = 0; k < 50; k++)
+                    for (int k = 0; k < maxHalfWidth; k++)
                     {
                         pickPoint2 += sideDirs[j];
                         Color checkColor = tileMap.GetPixel(pickPoint2.X, pickPoint2.Y);
-                        double diff = refColor.DifferenceTo(checkColor);
+                        double diff = Color.Difference(waterColor, checkColor);
                         if (diff > Config.Data.shoreContrast)
                             break;
                         riverHalfWidth[j] += 1.0;
@@ -105,94 +130,74 @@ namespace RiverTrace
 
             CalcSampleDimensions(p1, lastDirection);
 
-            int pixelRange = (int)(scanRadius * 2) + 1;
+            int angleSamples = (int)Math.Ceiling(scanRadius * Math.PI *
+                Config.Data.resamplingFactor * Config.Data.angleRange / 90.0);
+            int radiusSamples = (int)Math.Ceiling(scanRadius * Config.Data.resamplingFactor);
 
             var way = new List<Vector>();
             way.Add(p1);
 
-            List<SimpleBitmap> samples = new List<SimpleBitmap>();
+            var debugFrames = new List<DebugFrame>();
 
             Vector lastPoint = p1;
             for (int z = 0; z < Config.Data.iterationCount; z++)
             {
-                SimpleBitmap sb = null;
+                tileMap.Load(
+                    (int)(lastPoint.X - scanRadius) - 4,
+                    (int)(lastPoint.Y - scanRadius) - 4,
+                    (int)(scanRadius * 2) + 8,
+                    (int)(scanRadius * 2) + 8);
+
+                DebugFrame debugFrame = null;
+                double[] anglesGrid = new double[angleSamples];
                 if (Config.Data.debug)
-                    sb = new SimpleBitmap(pixelRange * 2, pixelRange);
-                var angles = new Dictionary<double, double>();
-                Parallel.For(0, pixelRange, j =>
                 {
-                    for (int i = 0; i < pixelRange; i++)
+                    debugFrame = new DebugFrame(scanRadius, angleSamples, radiusSamples);
+                    debugFrame.FillSectors(lastPoint, lastDirection, tileMap, waterColor);
+                }
+
+                Vector startV = lastDirection.Rotated(-Config.Data.angleRange);
+                Parallel.For(0, angleSamples, i =>
+                {
+                    Vector advV = startV.Rotated(i / (double)angleSamples * Config.Data.angleRange * 2.0);
+                    for (int j = 0; j < radiusSamples; j++)
                     {
-                        int x = (int)(lastPoint.X + i - scanRadius);
-                        int y = (int)(lastPoint.Y + j - scanRadius);
-                        Vector pixelVector = new Vector(x, y) - lastPoint;
-                        double pixelVectorLen = pixelVector.Length();
-
-                        if (pixelVectorLen > scanRadius)
-                            continue;
-                        if (pixelVectorLen < 1.0)
-                            continue;
-
-                        double angle = lastDirection.AngleTo(pixelVector);
-                        if (angle < -Config.Data.angleRange)
-                            continue;
-                        if (angle > Config.Data.angleRange)
-                            continue;
-
-                        Color c = tileMap.GetPixel(x, y);
+                        Vector p = lastPoint + advV * (j + 1) / Config.Data.resamplingFactor;
+                        double d = Color.Difference(waterColor, tileMap.GetPixel(p.X, p.Y));
+                        double d2 = Math.Max(1.0 - d / Config.Data.shoreContrast, 0.0);
+                        d2 *= j / (double)radiusSamples;
                         if (Config.Data.debug)
-                            sb.SetPixel(i, pixelRange - j - 1, c);
-
-                        double invDiff = Math.Max(1.0 -
-                            waterColor.DifferenceTo(c) / Config.Data.shoreContrast, 0.0);
-
-                        if (Config.Data.debug)
-                        {
-                            byte diffColor = (byte)Math.Round(invDiff * 255.0);
-                            sb.SetPixel(i + pixelRange, pixelRange - j - 1, new Color(diffColor, diffColor, diffColor));
-                        }
-
-                        if (invDiff != 0.0)
-                        {
-                            lock (angles)
-                            {
-                                if (!angles.ContainsKey(angle))
-                                    angles[angle] = invDiff;
-                                else
-                                    angles[angle] += invDiff;
-                            }
-                        }
+                            debugFrame.SetPolarTrans(i, j, d2);
+                        anglesGrid[i] += d2;
                     }
                 });
 
-                samples.Add(sb);
-
-                if (angles.Count == 0)
+                if (anglesGrid.Max() == 0.0)
                     break;
 
-                double[] anglesGrid = new double[(int)Math.Round(
-                    Config.Data.angleRange * 2 / Config.Data.angleStep + 1)];
-                foreach (var kv in angles)
-                {
-                    anglesGrid[(int)Math.Round((kv.Key +
-                        Config.Data.angleRange) / Config.Data.angleStep)] += kv.Value;
-                }
-
-                double bestAngle = (anglesGrid.ToList().IndexOf(anglesGrid.Max()) *
-                    Config.Data.angleStep - Config.Data.angleRange);
+                double bestAngle = anglesGrid.ToList().IndexOf(anglesGrid.Max()) /
+                     (double)angleSamples * Config.Data.angleRange * 2.0 - Config.Data.angleRange;
                 lastDirection = lastDirection.Rotated(bestAngle);
                 lastPoint += lastDirection * scanRadius * Config.Data.advanceRate;
 
                 if (!Intersection.Check(way, lastPoint))
                     break;
 
+                if (Config.Data.debug)
+                {
+                    debugFrame.SetPolarGrid(anglesGrid);
+                    debugFrames.Add(debugFrame);
+                }
+
                 way.Add(lastPoint);
             }
+
             if (Config.Data.simplificationStrength > 0.0)
             {
                 way = Simplify.DouglasPeuckerReduction(way,
                     riverWidthPx * Config.Data.simplificationStrength);
             }
+
             way.Reverse();
             sw.Stop();
 
@@ -201,16 +206,16 @@ namespace RiverTrace
             for (int i = 0; i < 25; i++)
                 Console.WriteLine();
             Console.WriteLine("<!--");
-            Console.WriteLine("Elapsed = " + sw.Elapsed.TotalSeconds + " sec");
+            Console.WriteLine("Elapsed = {0:0.000} sec", sw.Elapsed.TotalSeconds);
             Console.WriteLine("-->");
 
             if (Config.Data.debug)
             {
-                SimpleBitmap sampleChain = new SimpleBitmap(
-                    samples[0].Width, samples[0].Height * samples.Count);
-                for (int i = 0; i < samples.Count; i++)
-                    samples[i].CopyTo(sampleChain, i * samples[0].Height);
-                sampleChain.WriteTo("sample_chain.png");
+                SimpleBitmap debugInfo = new SimpleBitmap(
+                    debugFrames[0].Width, debugFrames[0].Height * debugFrames.Count);
+                for (int i = 0; i < debugFrames.Count; i++)
+                    debugFrames[i].CopyTo(debugInfo, i);
+                debugInfo.WriteTo("debug_info.png");
             }
         }
     }

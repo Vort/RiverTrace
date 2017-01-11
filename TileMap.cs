@@ -23,6 +23,8 @@ namespace RiverTrace
 
         public Color GetPixel(double x, double y)
         {
+            x -= 0.5;
+            y -= 0.5;
             double flx = Math.Floor(x);
             double fly = Math.Floor(y);
             double frx = x - flx;
@@ -30,14 +32,56 @@ namespace RiverTrace
             int flxi = (int)flx;
             int flyi = (int)fly;
 
-            Color c11 = GetPixel(flxi - 1, flyi - 1);
-            Color c12 = GetPixel(flxi - 1, flyi);
-            Color c21 = GetPixel(flxi, flyi - 1);
-            Color c22 = GetPixel(flxi, flyi);
+            Color c11 = GetPixel(flxi, flyi);
+            Color c12 = GetPixel(flxi, flyi + 1);
+            Color c21 = GetPixel(flxi + 1, flyi);
+            Color c22 = GetPixel(flxi + 1, flyi + 1);
 
             return Color.Lerp(
                 Color.Lerp(c11, c21, frx),
                 Color.Lerp(c12, c22, frx), fry);
+        }
+
+        private void Load(int tileIndexX, int tileIndexY)
+        {
+            long tileIndex = ((long)tileIndexY << 32) + tileIndexX;
+            if (!tiles.ContainsKey(tileIndex))
+            {
+                byte[] data;
+
+                string fileName = GetTileFileName(tileIndexX, tileIndexY, Zoom);
+                if (File.Exists(fileName))
+                    data = File.ReadAllBytes(fileName);
+                else
+                {
+                    data = Bing.GetTile(tileIndexX, tileIndexY, Zoom);
+                    Directory.CreateDirectory("cache");
+                    File.WriteAllBytes(fileName, data);
+                }
+                tiles[tileIndex] = new SimpleBitmap(data);
+            }
+        }
+
+        public void Load(int minX, int minY, int width, int height)
+        {
+            int tileIndexX1;
+            int tileIndexY1;
+            int tileIndexX2;
+            int tileIndexY2;
+            int trash;
+            Projection.PixToTile(minX, minY, Zoom,
+                out tileIndexX1, out tileIndexY1,
+                out trash, out trash);
+            Projection.PixToTile(minX + width - 1, minY + height - 1, Zoom,
+                out tileIndexX2, out tileIndexY2,
+                out trash, out trash);
+
+            int tileCountX = tileIndexX2 - tileIndexX1 + 1;
+            int tileCountY = tileIndexY2 - tileIndexY1 + 1;
+
+            for (int i = 0; i < tileCountX; i++)
+                for (int j = 0; j < tileCountY; j++)
+                    Load(tileIndexX1 + i, tileIndexY1 + j);
         }
 
         public Color GetPixel(int x, int y)
@@ -51,30 +95,7 @@ namespace RiverTrace
                 out tileOffsetX, out tileOffsetY);
 
             long tileIndex = ((long)tileIndexY << 32) + tileIndexX;
-
-            SimpleBitmap tile;
-            lock (tiles)
-            {
-                if (!tiles.TryGetValue(tileIndex, out tile))
-                {
-                    byte[] data;
-
-                    string fileName = GetTileFileName(tileIndexX, tileIndexY, Zoom);
-                    if (File.Exists(fileName))
-                        data = File.ReadAllBytes(fileName);
-                    else
-                    {
-                        data = Bing.GetTile(tileIndexX, tileIndexY, Zoom);
-                        Directory.CreateDirectory("cache");
-                        File.WriteAllBytes(fileName, data);
-                    }
-
-                    tile = new SimpleBitmap(data);
-                    tiles[tileIndex] = tile;
-                }
-            }
-
-            return tile.GetPixel(tileOffsetX, tileOffsetY);
+            return tiles[tileIndex].GetPixel(tileOffsetX, tileOffsetY);
         }
     }
 }

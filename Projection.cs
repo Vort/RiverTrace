@@ -51,7 +51,7 @@ namespace RiverTrace
 
             double res = initialResolution / (1 << zoom);
             x = (mx + originShift) / res;
-            y = (my + originShift) / res;
+            y = (originShift - my) / res;
         }
 
         public static void PixToTile(int x, int y, int zoom,
@@ -61,8 +61,7 @@ namespace RiverTrace
             tileIndexX = x / tileSize;
             tileIndexY = y / tileSize;
             tileOffsetX = x % tileSize;
-            tileOffsetY = tileSize - (y % tileSize) - 1;
-            tileIndexY = (1 << zoom) - 1 - tileIndexY;
+            tileOffsetY = y % tileSize;
         }
 
         public static void PixToDeg(double x, double y,
@@ -70,7 +69,7 @@ namespace RiverTrace
         {
             double res = initialResolution / (1 << zoom);
             double mx = x * res - originShift;
-            double my = y * res - originShift;
+            double my = originShift - y * res;
             lon = (mx / originShift) * 180.0;
             lat = (my / originShift) * 180.0;
 

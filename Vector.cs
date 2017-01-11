@@ -31,6 +31,11 @@ namespace RiverTrace
             return new Vector(v.X * l, v.Y * l);
         }
 
+        public static Vector operator /(Vector v, double l)
+        {
+            return new Vector(v.X / l, v.Y / l);
+        }
+
         public void Normalize()
         {
             double l = Length();

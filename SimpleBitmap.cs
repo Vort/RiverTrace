@@ -57,17 +57,21 @@ namespace RiverTrace
             Data[offset] = c.B;
         }
 
-        public void SetPixel(int x, int y, byte r, byte g, byte b)
+        public void SetPixel(int x, int y, byte intensity)
         {
             int offset = (Width * y + x) * 4;
-            Data[offset + 2] = r;
-            Data[offset + 1] = g;
-            Data[offset] = b;
+            Data[offset + 2] = intensity;
+            Data[offset + 1] = intensity;
+            Data[offset] = intensity;
         }
 
-        public void CopyTo(SimpleBitmap dest, int destY)
+        public void CopyTo(SimpleBitmap dest, int destX, int destY)
         {
-            Array.Copy(Data, 0, dest.Data, destY * Width * 4, Width * Height * 4);
+            for (int y = 0; y < Height; y++)
+            {
+                Array.Copy(Data, y * Width * 4,
+                    dest.Data, ((y + destY) * dest.Width + destX) * 4, Width * 4);
+            }
         }
     }
 }

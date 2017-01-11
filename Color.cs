@@ -1,17 +1,10 @@
 ﻿using ColorMine.ColorSpaces;
-using ColorMine.ColorSpaces.Comparisons;
+using System;
 
 namespace RiverTrace
 {
     struct Color
     {
-        private static Cie1976Comparison cie;
-
-        static Color()
-        {
-            cie = new Cie1976Comparison();
-        }
-
         public Color(byte r, byte g, byte b)
         {
             R = r;
@@ -19,11 +12,18 @@ namespace RiverTrace
             B = b;
         }
 
-        public double DifferenceTo(Color c)
+        public Lab ToLab()
         {
-            Rgb rgb1 = new Rgb { R = R, G = G, B = B };
-            Rgb rgb2 = new Rgb { R = c.R, G = c.G, B = c.B };
-            return rgb1.Compare(rgb2, cie);
+            return new Rgb { R = R, G = G, B = B }.To<Lab>();
+        }
+
+        public static double Difference(Lab c1, Color c2)
+        {
+            Lab c2lab = c2.ToLab();
+            double dl = c1.L - c2lab.L;
+            double da = c1.A - c2lab.A;
+            double db = c1.B - c2lab.B;
+            return Math.Sqrt(dl * dl + da * da + db * db);
         }
 
         public static Color Lerp(Color c1, Color c2, double x)

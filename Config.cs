@@ -28,9 +28,9 @@ namespace RiverTrace
         [DataMember]
         public double angleRange;
         [DataMember]
-        public double angleStep;
-        [DataMember]
         public double advanceRate;
+        [DataMember]
+        public double resamplingFactor;
         [DataMember]
         public double simplificationStrength;
 
@@ -57,8 +57,8 @@ namespace RiverTrace
                 shoreContrast = 10.0,
                 scanRadiusScale = 2.0,
                 angleRange = 90.0,
-                angleStep = 4.0,
                 advanceRate = 0.5,
+                resamplingFactor = 1.5,
                 simplificationStrength = 0.1,
                 debug = false
             };
