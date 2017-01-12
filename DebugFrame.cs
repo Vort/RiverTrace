@@ -33,19 +33,31 @@ namespace RiverTrace
             polarGrid = new SimpleBitmap(angleSamples, radiusSamples);
         }
 
+        private byte MultiplyIntensity(byte intensity, double factor)
+        {
+            int intensityMul = (int)(intensity * factor);
+            if (intensityMul > 255)
+                intensityMul = 255;
+            return (byte)intensityMul;
+        }
+
         public void SetPolarGrid(double[] anglesGrid)
         {
-            Color white = new Color(255, 255, 255);
-            Color gray = new Color(192, 192, 192);
             double agm = radiusSamples / anglesGrid.Max();
             for (int i = 0; i < angleSamples; i++)
             {
                 int h = (int)(agm * anglesGrid[i]);
-                for (int j = 0; j < h; j++)
+                byte c1 = 255;
+                byte c2 = (byte)((agm * anglesGrid[i] - h) * 255.0);
+                if (i == angleSamples / 2)
                 {
-                    polarGrid.SetPixel(i, radiusSamples - j - 1,
-                        (i == anglesGrid.Length / 2) ? gray : white);
+                    c1 = MultiplyIntensity(c1, 0.8);
+                    c2 = MultiplyIntensity(c2, 0.8);
                 }
+                for (int j = 0; j < h; j++)
+                    polarGrid.SetPixel(i, radiusSamples - j - 1, c1);
+                if (c2 != 0)
+                    polarGrid.SetPixel(i, radiusSamples - h - 1, c2);
             }
         }
 
@@ -53,12 +65,7 @@ namespace RiverTrace
         {
             byte diffColor = (byte)Math.Round(diff * 255.0);
             if (x == angleSamples / 2)
-            {
-                int diffColorm = (int)(diffColor * 1.5);
-                if (diffColorm > 255)
-                    diffColorm = 255;
-                diffColor = (byte)diffColorm;
-            }
+                diffColor = MultiplyIntensity(diffColor, 1.25);
             polarTrans.SetPixel(x, radiusSamples - y - 1, diffColor);
         }
 
