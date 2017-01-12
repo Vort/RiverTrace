@@ -37,9 +37,7 @@ namespace RiverTrace
             Color c21 = GetPixel(flxi + 1, flyi);
             Color c22 = GetPixel(flxi + 1, flyi + 1);
 
-            return Color.Lerp(
-                Color.Lerp(c11, c21, frx),
-                Color.Lerp(c12, c22, frx), fry);
+            return Color.BiLerp(c11, c12, c21, c22, frx, fry);
         }
 
         private void Load(int tileIndexX, int tileIndexY)

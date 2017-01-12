@@ -26,13 +26,21 @@ namespace RiverTrace
             return Math.Sqrt(dl * dl + da * da + db * db);
         }
 
-        public static Color Lerp(Color c1, Color c2, double x)
+        public static Color BiLerp(Color c11, Color c12,
+            Color c21, Color c22, double fx, double fy)
         {
-            double omx = 1 - x;
-            return new Color(
-                (byte)(c1.R * omx + c2.R * x),
-                (byte)(c1.G * omx + c2.G * x),
-                (byte)(c1.B * omx + c2.B * x));
+            double ifx = 1.0 - fx;
+            double ify = 1.0 - fy;
+            byte r = (byte)(
+                (c11.R * ifx + c21.R * fx) * ify +
+                (c12.R * ifx + c22.R * fx) * fy + 0.5);
+            byte g = (byte)(
+                (c11.G * ifx + c21.G * fx) * ify +
+                (c12.G * ifx + c22.G * fx) * fy + 0.5);
+            byte b = (byte)(
+                (c11.B * ifx + c21.B * fx) * ify +
+                (c12.B * ifx + c22.B * fx) * fy + 0.5);
+            return new Color(r, g, b);
         }
 
         public byte R;
