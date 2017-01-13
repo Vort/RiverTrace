@@ -54,7 +54,7 @@ namespace RiverTrace
             y = (originShift - my) / res;
         }
 
-        public static void PixToTile(int x, int y, int zoom,
+        public static void PixToTile(int x, int y,
             out int tileIndexX, out int tileIndexY,
             out int tileOffsetX, out int tileOffsetY)
         {

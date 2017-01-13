@@ -30,6 +30,8 @@ namespace RiverTrace
         [DataMember]
         public double advanceRate;
         [DataMember]
+        public double noiseReduction;
+        [DataMember]
         public double resamplingFactor;
         [DataMember]
         public double simplificationStrength;
@@ -58,6 +60,7 @@ namespace RiverTrace
                 scanRadiusScale = 2.0,
                 angleRange = 90.0,
                 advanceRate = 0.5,
+                noiseReduction = 0.5,
                 resamplingFactor = 1.5,
                 simplificationStrength = 0.1,
                 debug = false

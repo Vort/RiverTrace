@@ -67,10 +67,10 @@ namespace RiverTrace
             int tileIndexX2;
             int tileIndexY2;
             int trash;
-            Projection.PixToTile(minX, minY, Zoom,
+            Projection.PixToTile(minX, minY,
                 out tileIndexX1, out tileIndexY1,
                 out trash, out trash);
-            Projection.PixToTile(minX + width - 1, minY + height - 1, Zoom,
+            Projection.PixToTile(minX + width - 1, minY + height - 1,
                 out tileIndexX2, out tileIndexY2,
                 out trash, out trash);
 
@@ -88,7 +88,7 @@ namespace RiverTrace
             int tileIndexY;
             int tileOffsetX;
             int tileOffsetY;
-            Projection.PixToTile(x, y, Zoom,
+            Projection.PixToTile(x, y,
                 out tileIndexX, out tileIndexY,
                 out tileOffsetX, out tileOffsetY);
 

@@ -1,9 +1,10 @@
-﻿using System;
-using System.Linq;
+﻿using ColorMine.ColorSpaces;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
-using ColorMine.ColorSpaces;
 
 namespace RiverTrace
 {
@@ -113,6 +114,32 @@ namespace RiverTrace
             riverWidthM = Projection.Distance(wp1, wp2, Config.Data.zoom);
         }
 
+        private double[] Integrate(double[] samples, int sampleCount)
+        {
+            if (sampleCount == 1)
+                return samples;
+
+            int padCount = sampleCount / 2;
+
+            double[] paddedSamples = new double[padCount * 2 + samples.Length];
+            Array.Copy(samples, 0, paddedSamples, padCount, samples.Length);
+
+            for (int i = 0; i < padCount; i++)
+                paddedSamples[i] = samples[0];
+            for (int i = 0; i < padCount; i++)
+                paddedSamples[samples.Length + padCount + i] = samples[samples.Length - 1];
+
+            double[] result = new double[samples.Length];
+            for (int i = 0; i < samples.Length; i++)
+            {
+                double sum = 0.0;
+                for (int j = 0; j < sampleCount; j++)
+                    sum += paddedSamples[i + j];
+                result[i] = sum / sampleCount;
+            }
+            return result;
+        }
+
         public Tracer()
         {
             Stopwatch sw = new Stopwatch();
@@ -162,20 +189,26 @@ namespace RiverTrace
                     Vector advV = startV.Rotated(i / (double)angleSamples * Config.Data.angleRange * 2.0);
                     for (int j = 0; j < radiusSamples; j++)
                     {
-                        Vector p = lastPoint + advV * (j + 1) / Config.Data.resamplingFactor;
-                        double d = Color.Difference(waterColor, tileMap.GetPixel(p.X, p.Y));
-                        double d2 = Math.Max(1.0 - d / Config.Data.shoreContrast, 0.0);
-                        d2 *= j / (double)radiusSamples;
+                        Vector p = lastPoint + advV * (j + 0.5) / Config.Data.resamplingFactor;
+                        double diff = Color.Difference(waterColor, tileMap.GetPixel(p.X, p.Y));
+                        double normDiff = Math.Max(1.0 - diff / Config.Data.shoreContrast, 0.0);
+                        normDiff *= (j + 0.5) / radiusSamples;
                         if (Config.Data.debug)
-                            debugFrame.SetPolarTrans(i, j, d2);
-                        anglesGrid[i] += d2;
+                            debugFrame.SetPolarTrans(i, j, normDiff);
+                        anglesGrid[i] += normDiff;
                     }
                 });
 
-                if (anglesGrid.Max() == 0.0)
+                int integrateSamples = (int)(riverWidthPx * Config.Data.noiseReduction);
+                if (integrateSamples % 2 == 0)
+                    integrateSamples++;
+                anglesGrid = Integrate(anglesGrid, integrateSamples);
+
+                double anglesGridMax = anglesGrid.Max();
+                if (anglesGridMax == 0.0)
                     break;
 
-                double bestAngle = anglesGrid.ToList().IndexOf(anglesGrid.Max()) /
+                double bestAngle = anglesGrid.ToList().IndexOf(anglesGridMax) /
                      (double)angleSamples * Config.Data.angleRange * 2.0 - Config.Data.angleRange;
                 lastDirection = lastDirection.Rotated(bestAngle);
                 lastPoint += lastDirection * scanRadius * Config.Data.advanceRate;
@@ -211,11 +244,17 @@ namespace RiverTrace
 
             if (Config.Data.debug)
             {
-                SimpleBitmap debugInfo = new SimpleBitmap(
-                    debugFrames[0].Width, debugFrames[0].Height * debugFrames.Count);
+                string debugFileName = "debug_info.png";
+                int debugInfoHeight = debugFrames[0].Height * debugFrames.Count;
+                if (debugInfoHeight > 65535)
+                {
+                    File.Delete(debugFileName);
+                    throw new Exception("Can't save debug info: image height is larger than 65535 pixels");
+                }
+                SimpleBitmap debugInfo = new SimpleBitmap(debugFrames[0].Width, debugInfoHeight);
                 for (int i = 0; i < debugFrames.Count; i++)
                     debugFrames[i].CopyTo(debugInfo, i);
-                debugInfo.WriteTo("debug_info.png");
+                debugInfo.WriteTo(debugFileName);
             }
         }
     }
