@@ -244,17 +244,11 @@ namespace RiverTrace
 
             if (Config.Data.debug)
             {
-                string debugFileName = "debug_info.png";
-                int debugInfoHeight = debugFrames[0].Height * debugFrames.Count;
-                if (debugInfoHeight > 65535)
-                {
-                    File.Delete(debugFileName);
-                    throw new Exception("Can't save debug info: image height is larger than 65535 pixels");
-                }
-                SimpleBitmap debugInfo = new SimpleBitmap(debugFrames[0].Width, debugInfoHeight);
+                SimpleBitmap debugInfo = new SimpleBitmap(
+                    debugFrames[0].Width, debugFrames[0].Height * debugFrames.Count);
                 for (int i = 0; i < debugFrames.Count; i++)
                     debugFrames[i].CopyTo(debugInfo, i);
-                debugInfo.WriteTo(debugFileName);
+                debugInfo.WriteTo("debug_info.tiff");
             }
         }
     }

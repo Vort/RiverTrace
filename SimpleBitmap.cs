@@ -32,7 +32,8 @@ namespace RiverTrace
 
         public void WriteTo(string fileName)
         {
-            var encoder = new PngBitmapEncoder();
+            var encoder = new TiffBitmapEncoder();
+            encoder.Compression = TiffCompressOption.Rle;
             encoder.Frames.Add(BitmapFrame.Create(GetBitmap()));
             encoder.Save(File.Create(fileName));
         }
