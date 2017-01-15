@@ -2,14 +2,8 @@
 
 namespace RiverTrace
 {
-    class Vector
+    struct Vector
     {
-        public Vector()
-        {
-            X = 0.0;
-            Y = 0.0;
-        }
-
         public Vector(double x, double y)
         {
             X = x;
