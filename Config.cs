@@ -1,42 +1,26 @@
 ﻿using Newtonsoft.Json;
 using System.IO;
-using System.Runtime.Serialization;
 
 namespace RiverTrace
 {
-    [DataContract]
     class ConfigData
     {
-        [DataMember]
         public int zoom;
 
-        [DataMember]
         public double lat1;
-        [DataMember]
         public double lon1;
-        [DataMember]
         public double lat2;
-        [DataMember]
         public double lon2;
 
-        [DataMember]
         public int iterationCount;
-        [DataMember]
         public double shoreContrast;
-        [DataMember]
         public double scanRadiusScale;
-        [DataMember]
         public double angleRange;
-        [DataMember]
         public double advanceRate;
-        [DataMember]
         public double noiseReduction;
-        [DataMember]
         public double resamplingFactor;
-        [DataMember]
         public double simplificationStrength;
 
-        [DataMember]
         public bool debug;
     }
 

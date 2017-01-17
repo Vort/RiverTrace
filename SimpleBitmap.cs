@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -8,19 +11,40 @@ namespace RiverTrace
     class SimpleBitmap
     {
         public byte[] Data;
-        public readonly int Width;
-        public readonly int Height;
+        public int Width;
+        public int Height;
 
         public SimpleBitmap(byte[] fileData)
         {
+            MemoryStream byteStream = new MemoryStream(fileData);
+            if (Type.GetType("Mono.Runtime") == null)
+                InitWin(byteStream);
+            else
+                InitMono(byteStream);
+        }
+
+        private void InitWin(MemoryStream byteStream)
+        {
             var bitmapImage = new BitmapImage();
             bitmapImage.BeginInit();
-            bitmapImage.StreamSource = new MemoryStream(fileData);
+            bitmapImage.StreamSource = byteStream;
             bitmapImage.EndInit();
             Width = bitmapImage.PixelWidth;
             Height = bitmapImage.PixelHeight;
             Data = new byte[Width * Height * 4];
             bitmapImage.CopyPixels(Data, Width * 4, 0);
+        }
+
+        private void InitMono(MemoryStream byteStream)
+        {
+            Bitmap bmp = (Bitmap)Bitmap.FromStream(byteStream);
+            Width = bmp.Width;
+            Height = bmp.Height;
+            Data = new byte[Width * Height * 4];
+            BitmapData bmpData = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+                ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppRgb);
+            Marshal.Copy(bmpData.Scan0, Data, 0, Data.Length);
+            bmp.UnlockBits(bmpData);
         }
 
         public SimpleBitmap(int width, int height)
@@ -32,16 +56,33 @@ namespace RiverTrace
 
         public void WriteTo(string fileName)
         {
+            if (Type.GetType("Mono.Runtime") == null)
+                WriteToWin(fileName);
+            else
+                WriteToMono(fileName);
+        }
+
+        private void WriteToWin(string fileName)
+        {
             var encoder = new TiffBitmapEncoder();
             encoder.Compression = TiffCompressOption.Rle;
-            encoder.Frames.Add(BitmapFrame.Create(GetBitmap()));
+            encoder.Frames.Add(BitmapFrame.Create(BitmapSource.Create(
+                Width, Height, 96, 96, PixelFormats.Bgr32, null, Data, Width * 4)));
             encoder.Save(File.Create(fileName));
         }
 
-        public BitmapSource GetBitmap()
+        private void WriteToMono(string fileName)
         {
-            return BitmapSource.Create(Width, Height,
-                96, 96, PixelFormats.Bgr32, null, Data, Width * 4);
+            GCHandle pinnedArray = GCHandle.Alloc(Data, GCHandleType.Pinned);
+            Bitmap bmp32 = new Bitmap(Width, Height, Width * 4,
+                System.Drawing.Imaging.PixelFormat.Format32bppRgb,
+                pinnedArray.AddrOfPinnedObject());
+            Bitmap bmp24 = new Bitmap(Width, Height,
+                System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            using (Graphics gr = Graphics.FromImage(bmp24))
+                gr.DrawImage(bmp32, new Rectangle(0, 0, Width, Height));
+            bmp24.Save(fileName, ImageFormat.Tiff);
+            pinnedArray.Free();
         }
 
         public Color GetPixel(int x, int y)
