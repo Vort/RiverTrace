@@ -200,7 +200,8 @@ namespace RiverTrace
                     }
                 });
 
-                int integrateSamples = (int)(riverWidthPx * Config.Data.noiseReduction);
+                int integrateSamples = (int)(riverWidthPx *
+                    Config.Data.resamplingFactor * Config.Data.noiseReduction);
                 if (integrateSamples % 2 == 0)
                     integrateSamples++;
                 anglesGrid = Integrate(anglesGrid, integrateSamples);

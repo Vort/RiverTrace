@@ -50,21 +50,21 @@ namespace RiverTrace
             long tileIndex = ((long)tileIndexY << 32) + tileIndexX;
             if (!tiles.ContainsKey(tileIndex))
             {
-                bool fileExists = true;
-                string[] fileList = null;
+                string foundFileName = null;
                 string fileNameBase = tileIndexX + "_" + tileIndexY + "_" + Zoom;
-                if (Directory.Exists(cacheDir))
+                if (Config.Data.enableCaching)
                 {
-                    fileList = Directory.GetFiles(cacheDir, fileNameBase + ".*");
-                    if (fileList.Length == 0)
-                        fileExists = false;
+                    if (Directory.Exists(cacheDir))
+                    {
+                        string[] fileList = Directory.GetFiles(cacheDir, fileNameBase + ".*");
+                        if (fileList.Length != 0)
+                            foundFileName = fileList[0];
+                    }
                 }
-                else
-                    fileExists = false;
 
                 byte[] data;
-                if (Config.Data.enableCaching && fileExists)
-                    data = File.ReadAllBytes(fileList[0]);
+                if (foundFileName != null)
+                    data = File.ReadAllBytes(foundFileName);
                 else
                 {
                     data = imageSource.GetTile(tileIndexX, tileIndexY, Zoom);
