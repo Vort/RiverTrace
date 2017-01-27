@@ -178,7 +178,7 @@ namespace RiverTrace
 
                 DebugFrame debugFrame = null;
                 double[] anglesGrid = new double[angleSamples];
-                if (Config.Data.debug)
+                if (Config.Data.generateDebugInfo)
                 {
                     debugFrame = new DebugFrame(scanRadius, angleSamples, radiusSamples);
                     debugFrame.FillSectors(lastPoint, lastDirection, tileMap, waterColor);
@@ -194,7 +194,7 @@ namespace RiverTrace
                         double diff = Color.Difference(waterColor, tileMap.GetPixel(p.X, p.Y));
                         double normDiff = Math.Max(1.0 - diff / Config.Data.shoreContrast, 0.0);
                         normDiff *= (j + 0.5) / radiusSamples;
-                        if (Config.Data.debug)
+                        if (Config.Data.generateDebugInfo)
                             debugFrame.SetPolarTrans(i, j, normDiff);
                         anglesGrid[i] += normDiff;
                     }
@@ -217,7 +217,7 @@ namespace RiverTrace
                 if (!Intersection.Check(way, lastPoint))
                     break;
 
-                if (Config.Data.debug)
+                if (Config.Data.generateDebugInfo)
                 {
                     debugFrame.SetPolarGrid(anglesGrid);
                     debugFrames.Add(debugFrame);
@@ -243,7 +243,7 @@ namespace RiverTrace
             Console.WriteLine("Elapsed = {0:0.000} sec", sw.Elapsed.TotalSeconds);
             Console.WriteLine("-->");
 
-            if (Config.Data.debug)
+            if (Config.Data.generateDebugInfo)
             {
                 SimpleBitmap debugInfo = new SimpleBitmap(
                     debugFrames[0].Width, debugFrames[0].Height * debugFrames.Count);

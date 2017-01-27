@@ -32,12 +32,16 @@ namespace RiverTrace
             Width = bitmapImage.PixelWidth;
             Height = bitmapImage.PixelHeight;
             Data = new byte[Width * Height * 4];
-            bitmapImage.CopyPixels(Data, Width * 4, 0);
+
+            BitmapSource source = bitmapImage;
+            if (source.Format != PixelFormats.Bgr32)
+                source = new FormatConvertedBitmap(source, PixelFormats.Bgr32, null, 0);
+            source.CopyPixels(Data, Width * 4, 0);
         }
 
         private void InitMono(MemoryStream byteStream)
         {
-            Bitmap bmp = (Bitmap)Bitmap.FromStream(byteStream);
+            Bitmap bmp = (Bitmap)Image.FromStream(byteStream);
             Width = bmp.Width;
             Height = bmp.Height;
             Data = new byte[Width * Height * 4];

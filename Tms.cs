@@ -7,7 +7,7 @@ namespace RiverTrace
     class Tms : ImageSource
     {
         private string tileUrl;
-        private static WebClient wc;
+        private WebClient wc;
 
         public Tms(string tileUrl)
         {
@@ -29,6 +29,7 @@ namespace RiverTrace
             string finalUrl = tileUrl.
                 Replace("{x}", tileIndexX.ToString()).
                 Replace("{y}", tileIndexY.ToString()).
+                Replace("{-y}", ((1 << zoom) - tileIndexY - 1).ToString()).
                 Replace("{zoom}", zoom.ToString());
             byte[] data = wc.DownloadData(finalUrl);
             return data;

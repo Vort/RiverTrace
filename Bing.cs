@@ -5,8 +5,8 @@ namespace RiverTrace
 {
     class Bing : ImageSource
     {
-        private static string tileUrl;
-        private static WebClient wc;
+        private string tileUrl;
+        private WebClient wc;
 
         public Bing()
         {

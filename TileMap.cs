@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
 using System.IO;
 
@@ -8,6 +9,7 @@ namespace RiverTrace
     {
         public readonly int Zoom;
 
+        private string cacheDir;
         private Dictionary<long, SimpleBitmap> tiles;
         private ImageSource imageSource;
 
@@ -21,12 +23,7 @@ namespace RiverTrace
                 imageSource = new Tms(Config.Data.imageSourceUrl);
             else
                 throw new Exception("Protocol is not supported");
-        }
-
-        private static string GetTileFileName(int tileIndexX, int tileIndexY, int zoom)
-        {
-            return Path.Combine("cache", Config.Data.imageSourceName,
-                tileIndexX + "_" + tileIndexY + "_" + zoom + ".jpeg");
+            cacheDir = Path.Combine("cache", Config.Data.imageSourceName);
         }
 
         public Color GetPixel(double x, double y)
@@ -53,17 +50,38 @@ namespace RiverTrace
             long tileIndex = ((long)tileIndexY << 32) + tileIndexX;
             if (!tiles.ContainsKey(tileIndex))
             {
-                byte[] data;
+                bool fileExists = true;
+                string[] fileList = null;
+                string fileNameBase = tileIndexX + "_" + tileIndexY + "_" + Zoom;
+                if (Directory.Exists(cacheDir))
+                {
+                    fileList = Directory.GetFiles(cacheDir, fileNameBase + ".*");
+                    if (fileList.Length == 0)
+                        fileExists = false;
+                }
+                else
+                    fileExists = false;
 
-                string fileName = GetTileFileName(tileIndexX, tileIndexY, Zoom);
-                if (File.Exists(fileName))
-                    data = File.ReadAllBytes(fileName);
+                byte[] data;
+                if (Config.Data.enableCaching && fileExists)
+                    data = File.ReadAllBytes(fileList[0]);
                 else
                 {
                     data = imageSource.GetTile(tileIndexX, tileIndexY, Zoom);
-                    Directory.CreateDirectory(
-                        Path.Combine("cache", Config.Data.imageSourceName));
-                    File.WriteAllBytes(fileName, data);
+                    if (Config.Data.enableCaching)
+                    {
+                        string fileExt = "bin";
+                        if (data.Take(3).SequenceEqual(new byte[] { 0xFF, 0xD8, 0xFF }))
+                            fileExt = "jpeg";
+                        else if (data.Take(8).SequenceEqual(new byte[] {
+                            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }))
+                        {
+                            fileExt = "png";
+                        }
+                        Directory.CreateDirectory(cacheDir);
+                        File.WriteAllBytes(Path.Combine(
+                            cacheDir, fileNameBase + "." + fileExt), data);
+                    }
                 }
                 tiles[tileIndex] = new SimpleBitmap(data);
             }

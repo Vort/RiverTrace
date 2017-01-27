@@ -29,7 +29,8 @@ namespace RiverTrace
         public double resamplingFactor;
         public double simplificationStrength;
 
-        public bool debug;
+        public bool generateDebugInfo;
+        public bool enableCaching;
 
         public string imageSourceName;
         [JsonConverter(typeof(StringEnumConverter))]
@@ -51,7 +52,8 @@ namespace RiverTrace
             noiseReduction = 0.5;
             resamplingFactor = 1.5;
             simplificationStrength = 0.1;
-            debug = false;
+            generateDebugInfo = false;
+            enableCaching = true;
             imageSourceName = "Bing";
             imageSourceProtocol = ImageSourceProtocol.bing;
             imageSourceUrl = "";
