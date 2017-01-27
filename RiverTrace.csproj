@@ -50,6 +50,7 @@
     <Compile Include="Color.cs" />
     <Compile Include="Config.cs" />
     <Compile Include="DebugFrame.cs" />
+    <Compile Include="ImageSource.cs" />
     <Compile Include="Intersection.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Projection.cs" />
@@ -57,6 +58,7 @@
     <Compile Include="SimpleBitmap.cs" />
     <Compile Include="Simplify.cs" />
     <Compile Include="TileMap.cs" />
+    <Compile Include="Tms.cs" />
     <Compile Include="Tracer.cs" />
     <Compile Include="Vector.cs" />
   </ItemGroup>

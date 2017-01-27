@@ -9,16 +9,24 @@ namespace RiverTrace
         public readonly int Zoom;
 
         private Dictionary<long, SimpleBitmap> tiles;
+        private ImageSource imageSource;
 
         public TileMap(int zoom)
         {
             Zoom = zoom;
             tiles = new Dictionary<long, SimpleBitmap>();
+            if (Config.Data.imageSourceProtocol == ImageSourceProtocol.bing)
+                imageSource = new Bing();
+            else if (Config.Data.imageSourceProtocol == ImageSourceProtocol.tms)
+                imageSource = new Tms(Config.Data.imageSourceUrl);
+            else
+                throw new Exception("Protocol is not supported");
         }
 
         private static string GetTileFileName(int tileIndexX, int tileIndexY, int zoom)
         {
-            return Path.Combine("cache", tileIndexX + "_" + tileIndexY + "_" + zoom + ".jpeg");
+            return Path.Combine("cache", Config.Data.imageSourceName,
+                tileIndexX + "_" + tileIndexY + "_" + zoom + ".jpeg");
         }
 
         public Color GetPixel(double x, double y)
@@ -52,8 +60,9 @@ namespace RiverTrace
                     data = File.ReadAllBytes(fileName);
                 else
                 {
-                    data = Bing.GetTile(tileIndexX, tileIndexY, Zoom);
-                    Directory.CreateDirectory("cache");
+                    data = imageSource.GetTile(tileIndexX, tileIndexY, Zoom);
+                    Directory.CreateDirectory(
+                        Path.Combine("cache", Config.Data.imageSourceName));
                     File.WriteAllBytes(fileName, data);
                 }
                 tiles[tileIndex] = new SimpleBitmap(data);

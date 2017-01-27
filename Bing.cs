@@ -3,14 +3,15 @@ using System.Text.RegularExpressions;
 
 namespace RiverTrace
 {
-    class Bing
+    class Bing : ImageSource
     {
         private static string tileUrl;
         private static WebClient wc;
 
-        static Bing()
+        public Bing()
         {
             tileUrl = "";
+            wc = new WebClient();
         }
 
         private static string GetQuadkey(int tileIndexX, int tileIndexY, int zoom)
@@ -25,14 +26,13 @@ namespace RiverTrace
             return quadKey;
         }
 
-        public static byte[] GetTile(int tileIndexX, int tileIndexY, int zoom)
+        public byte[] GetTile(int tileIndexX, int tileIndexY, int zoom)
         {
             if (tileUrl == "")
             {
                 string apiKey = "Arzdiw4nlOJzRwOz__qailc8NiR31Tt51dN2D7cm57NrnceZnCpgOkmJhNpGoppU";
                 string restUrl = "http://dev.virtualearth.net/REST/v1/Imagery/Metadata/Aerial?" + 
                     "include=ImageryProviders&output=xml&key=" + apiKey;
-                wc = new WebClient();
                 string xml = wc.DownloadString(restUrl);
                 Match match1 = Regex.Match(xml, "<ImageryMetadata><ImageUrl>([^<]*)<");
                 Match match2 = Regex.Match(xml, "<ImageUrlSubdomains><string>([^<]*)<");
